@@ -4,6 +4,12 @@ Aplicación web desarrollada con React para la gestión de inventario de product
 
 ---
 
+# 🪑 Sistema de Inventario - Lumon
+
+Aplicación web desarrollada con React para la gestión de inventario de productos, con un diseño moderno inspirado en marcas premium.
+
+---
+
 ## 🚀 Funcionalidades
 
 - 🔐 Sistema de login básico
