@@ -17,22 +17,35 @@ export default function App() {
   });
 
   const [search, setSearch] = useState('');
-  const [message, setMessage] = useState('');
   const [currentProduct, setCurrentProduct] = useState(null);
   const [loginData, setLoginData] = useState({ user: '', password: '' });
+  const [toast, setToast] = useState('');
 
-  // 🔹 Guardar en localStorage
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2000);
+  };
+
   useEffect(() => {
     localStorage.setItem('productos', JSON.stringify(products));
   }, [products]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('auth');
+    if (saved === 'true') setIsAuthenticated(true);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('auth', isAuthenticated);
+  }, [isAuthenticated]);
 
   const handleLogin = (e) => {
     e.preventDefault();
     if (loginData.user === 'admin' && loginData.password === '1234') {
       setIsAuthenticated(true);
-      setMessage('');
+      showToast('Sesión iniciada');
     } else {
-      setMessage('Usuario o contraseña incorrectos');
+      showToast('Credenciales incorrectas');
     }
   };
 
@@ -40,28 +53,35 @@ export default function App() {
     e.preventDefault();
     const formData = new FormData(e.target);
 
+    const name = formData.get('name');
+    const category = formData.get('category');
     const stock = parseInt(formData.get('stock'));
     const price = parseFloat(formData.get('price'));
 
+    if (!name || !category) {
+      showToast('Todos los campos son obligatorios');
+      return;
+    }
+
     if (stock < 0 || price < 0) {
-      setMessage('Valores inválidos');
+      showToast('Valores inválidos');
       return;
     }
 
     const productData = {
       id: currentProduct ? currentProduct.id : Date.now(),
-      name: formData.get('name'),
-      category: formData.get('category'),
+      name,
+      category,
       stock,
       price,
     };
 
     if (currentProduct) {
       setProducts(products.map(p => p.id === currentProduct.id ? productData : p));
-      setMessage('Producto actualizado');
+      showToast('Producto actualizado');
     } else {
       setProducts([...products, productData]);
-      setMessage('Producto agregado');
+      showToast('Producto agregado');
     }
 
     setView('inventario');
@@ -71,20 +91,23 @@ export default function App() {
   const deleteProduct = (id) => {
     if (window.confirm('¿Eliminar producto?')) {
       setProducts(products.filter(p => p.id !== id));
-      setMessage('Producto eliminado');
+      showToast('Producto eliminado');
     }
+  };
+
+  const resetProducts = () => {
+    localStorage.removeItem('productos');
+    window.location.reload();
   };
 
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // LOGIN
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
         <div className="max-w-sm w-full bg-neutral-900 rounded-2xl p-8 border border-neutral-800">
-          
           <div className="flex justify-center mb-6">
             <img src={logo} alt="logo" className="w-16" />
           </div>
@@ -92,19 +115,17 @@ export default function App() {
           <h1 className="text-white text-xl text-center">Lumon</h1>
 
           <form onSubmit={handleLogin} className="space-y-4 mt-6">
-            <input 
+            <input
               placeholder="Usuario"
-              className="w-full p-3 bg-neutral-800 rounded text-white"
+              className="w-full p-3 bg-neutral-800 rounded text-white focus:ring-1 focus:ring-white/30"
               onChange={(e)=>setLoginData({...loginData,user:e.target.value})}
             />
-            <input 
+            <input
               type="password"
               placeholder="Contraseña"
-              className="w-full p-3 bg-neutral-800 rounded text-white"
+              className="w-full p-3 bg-neutral-800 rounded text-white focus:ring-1 focus:ring-white/30"
               onChange={(e)=>setLoginData({...loginData,password:e.target.value})}
             />
-
-            {message && <p className="text-red-400 text-sm">{message}</p>}
 
             <button className="w-full bg-white text-black py-3 rounded flex justify-center gap-2">
               <LogIn size={16}/> Entrar
@@ -118,16 +139,39 @@ export default function App() {
   return (
     <div className="min-h-screen flex bg-neutral-950 text-white">
 
-      {/* SIDEBAR */}
+      {toast && (
+        <div className="fixed top-4 right-4 bg-green-600 px-4 py-2 rounded shadow">
+          {toast}
+        </div>
+      )}
+
       <aside className="w-52 bg-neutral-900 p-6 flex flex-col">
         <img src={logo} alt="logo" className="w-10 mx-auto mb-6" />
 
-        <button onClick={()=>{setView('inventario'); setCurrentProduct(null)}} className="mb-2">
+        <button 
+          onClick={()=>{setView('inventario'); setCurrentProduct(null)}}
+          className={`mb-2 px-3 py-2 rounded transition ${
+            view === 'inventario'
+              ? 'bg-white text-black font-semibold'
+              : 'hover:bg-neutral-800'
+          }`}
+        >
           Inventario
         </button>
 
-        <button onClick={()=>{setView('agregar'); setCurrentProduct(null)}} className="mb-2">
-          Agregar
+        <button 
+  onClick={()=>{setView('agregar'); setCurrentProduct(null)}}
+  className={`mb-2 px-3 py-2 rounded transition-all duration-200 transform ${
+    view === 'agregar'
+      ? 'bg-white text-black font-semibold scale-105 shadow-md'
+      : 'hover:bg-neutral-800 hover:scale-105'
+  }`}
+>
+  + Agregar
+</button>
+
+        <button onClick={resetProducts} className="mt-4 text-yellow-400">
+          Reset inventario
         </button>
 
         <button onClick={()=>setIsAuthenticated(false)} className="mt-auto text-red-400">
@@ -135,10 +179,8 @@ export default function App() {
         </button>
       </aside>
 
-      {/* MAIN */}
       <main className="flex-1 p-8">
 
-        {/* BUSCADOR */}
         <input
           placeholder="Buscar producto..."
           className="mb-4 p-2 w-full bg-neutral-800 rounded"
@@ -146,14 +188,10 @@ export default function App() {
           onChange={(e)=>setSearch(e.target.value)}
         />
 
-        {/* MENSAJE */}
-        {message && (
-          <div className="mb-4 p-2 bg-green-700 rounded text-center">
-            {message}
-          </div>
-        )}
+        <p className="text-sm text-neutral-400 mb-2">
+          Total: {filteredProducts.length} productos
+        </p>
 
-        {/* TABLA */}
         {view === 'inventario' && (
           <div className="bg-neutral-900 rounded-xl overflow-hidden border border-neutral-800">
             <table className="w-full text-sm">
@@ -161,16 +199,16 @@ export default function App() {
                 <tr>
                   <th className="px-4 py-3 text-left">Producto</th>
                   <th className="px-4 py-3 text-left">Categoría</th>
-                  <th className="px-4 py-3 text-center w-24">Stock</th>
-                  <th className="px-4 py-3 text-right w-32">Precio</th>
-                  <th className="px-4 py-3 text-right w-24">Acciones</th>
+                  <th className="px-4 py-3 text-center">Stock</th>
+                  <th className="px-4 py-3 text-right">Precio</th>
+                  <th className="px-4 py-3 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredProducts.map(p => (
-                  <tr key={p.id} className="border-t border-neutral-800">
+                  <tr key={p.id} className="border-t border-neutral-800 hover:bg-neutral-800 transition">
                     <td className="px-4 py-3">{p.name}</td>
-                    <td className="px-4 py-3 text-neutral-400">{p.category}</td>
+                    <td className="px-4 py-3">{p.category}</td>
                     <td className="px-4 py-3 text-center">{p.stock}</td>
                     <td className="px-4 py-3 text-right">${p.price}</td>
                     <td className="px-4 py-3 text-right space-x-2">
@@ -188,47 +226,32 @@ export default function App() {
           </div>
         )}
 
-        {/* FORMULARIO */}
         {(view === 'agregar' || view === 'editar') && (
           <form onSubmit={saveProduct} className="space-y-4">
 
-            <input 
-              name="name" 
-              defaultValue={currentProduct?.name} 
-              placeholder="Nombre" 
-              required 
-              className="w-full p-2 bg-neutral-800"
-            />
+            <input name="name" defaultValue={currentProduct?.name} placeholder="Nombre" required className="w-full p-2 bg-neutral-800"/>
+            <input name="category" defaultValue={currentProduct?.category} placeholder="Categoría" required className="w-full p-2 bg-neutral-800"/>
+            <input name="stock" type="number" defaultValue={currentProduct?.stock} placeholder="Stock" required className="w-full p-2 bg-neutral-800"/>
+            <input name="price" type="number" defaultValue={currentProduct?.price} placeholder="Precio" required className="w-full p-2 bg-neutral-800"/>
 
-            <input 
-              name="category" 
-              defaultValue={currentProduct?.category} 
-              placeholder="Categoría" 
-              required 
-              className="w-full p-2 bg-neutral-800"
-            />
+            <div className="flex gap-2">
+              <button className="bg-white text-black px-4 py-2 rounded">
+                {currentProduct ? "Actualizar" : "Guardar"}
+              </button>
 
-            <input 
-              name="stock" 
-              type="number" 
-              defaultValue={currentProduct?.stock} 
-              placeholder="Stock" 
-              required 
-              className="w-full p-2 bg-neutral-800"
-            />
-
-            <input 
-              name="price" 
-              type="number" 
-              defaultValue={currentProduct?.price} 
-              placeholder="Precio" 
-              required 
-              className="w-full p-2 bg-neutral-800"
-            />
-
-            <button className="bg-white text-black px-4 py-2 rounded">
-              {currentProduct ? "Actualizar" : "Guardar"}
-            </button>
+              {currentProduct && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentProduct(null);
+                    setView('inventario');
+                  }}
+                  className="bg-gray-600 px-4 py-2 rounded"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
           </form>
         )}
       </main>
