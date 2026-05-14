@@ -163,8 +163,8 @@ export default function App() {
   onClick={()=>{setView('agregar'); setCurrentProduct(null)}}
   className={`mb-2 px-3 py-2 rounded transition-all duration-200 transform ${
     view === 'agregar'
-      ? 'bg-white text-black font-semibold scale-105 shadow-md'
-      : 'hover:bg-neutral-800 hover:scale-105'
+      ? 'bg-white text-black font-semibold scale-106 shadow-md'
+      : 'hover:bg-neutral-800 hover:scale-106'
   }`}
 >
   + Agregar
